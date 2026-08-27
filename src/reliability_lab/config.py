@@ -36,6 +36,8 @@ class ScenarioConfig(BaseModel):
     name: str
     description: str = ""
     provider_overrides: dict[str, float] = Field(default_factory=dict)
+    # None = inherit cache.enabled; False/True overrides it for this scenario only.
+    cache_enabled: bool | None = None
 
 
 class LabConfig(BaseModel):
@@ -44,6 +46,9 @@ class LabConfig(BaseModel):
     cache: CacheConfig
     load_test: LoadTestConfig
     scenarios: list[ScenarioConfig] = Field(default_factory=list)
+    # None = nondeterministic run; an int makes provider failures, token counts
+    # and query selection reproducible across runs.
+    seed: int | None = None
 
 
 def load_config(path: str | Path) -> LabConfig:

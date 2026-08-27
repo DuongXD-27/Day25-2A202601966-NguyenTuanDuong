@@ -25,20 +25,30 @@ class FakeLLMProvider:
     This avoids real API keys while still simulating latency, failures, and cost.
     """
 
-    def __init__(self, name: str, fail_rate: float, base_latency_ms: int, cost_per_1k_tokens: float):
+    def __init__(
+        self,
+        name: str,
+        fail_rate: float,
+        base_latency_ms: int,
+        cost_per_1k_tokens: float,
+        rng: random.Random | None = None,
+    ):
         self.name = name
         self.fail_rate = fail_rate
         self.base_latency_ms = base_latency_ms
         self.cost_per_1k_tokens = cost_per_1k_tokens
+        # Injecting a seeded Random makes failures/jitter/token counts reproducible;
+        # an unseeded instance keeps the original nondeterministic behaviour.
+        self._rng: random.Random = rng if rng is not None else random.Random()
 
     def complete(self, prompt: str) -> ProviderResponse:
         start = time.perf_counter()
-        jitter_ms = random.randint(0, 60)
+        jitter_ms = self._rng.randint(0, 60)
         time.sleep((self.base_latency_ms + jitter_ms) / 1000.0)
-        if random.random() < self.fail_rate:
+        if self._rng.random() < self.fail_rate:
             raise ProviderError(f"{self.name} simulated failure")
         input_tokens = max(1, len(prompt.split()))
-        output_tokens = random.randint(20, 80)
+        output_tokens = self._rng.randint(20, 80)
         cost = (input_tokens + output_tokens) / 1000.0 * self.cost_per_1k_tokens
         latency_ms = (time.perf_counter() - start) * 1000
         return ProviderResponse(
